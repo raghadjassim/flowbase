@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Calendar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/calendar.css' %}">{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;">
+  <div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="cal-nav">
+        <a href="?y={{ prev_year }}&m={{ prev_month }}" class="fb-icon-btn">‹</a>
+        <h2 style="margin:0;">{{ month_label }}</h2>
+        <a href="?y={{ next_year }}&m={{ next_month }}" class="fb-icon-btn">›</a>
+      </div>
+      <button class="fb-btn" onclick="openEventModal()">＋ New event</button>
+    </div>
+
+    <div class="cal-grid" style="margin-bottom:8px;">
+      <div class="cal-weekday">Sat</div><div class="cal-weekday">Sun</div><div class="cal-weekday">Mon</div>
+      <div class="cal-weekday">Tue</div><div class="cal-weekday">Wed</div><div class="cal-weekday">Thu</div><div class="cal-weekday">Fri</div>
+    </div>
+    <div class="cal-grid">
+      {% for week in weeks %}
+        {% for day in week %}
+          <div class="cal-day {% if not day.in_month %}out{% endif %} {% if day.is_today %}today{% endif %}" onclick="openEventModal('{{ day.date|date:'Y-m-d' }}')">
+            <div class="cal-day-num">{{ day.date|date:"j" }}</div>
+            {% for e in day.events %}
+              <div class="cal-event" style="background:{{ e.color }};">{{ e.title }}</div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="fb-card">
+    <h3 style="margin-top:0;">Upcoming events</h3>
+    {% for e in upcoming %}
+      <div class="upcoming-item">
+        <span class="upcoming-dot" style="background:{{ e.color }};"></span>
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">{{ e.title }}</div>
+          <div style="color:var(--text-faint);font-size:11.5px;">{{ e.date|date:"d/m" }}{% if e.start_time %} · {{ e.start_time|time:"H:i" }}{% endif %}</div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="fb-empty" style="padding:20px;">No upcoming events.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="fb-modal-overlay" id="eventModalOverlay">
+  <div class="fb-modal">
+    <span class="fb-modal-close" onclick="closeEventModal()">×</span>
+    <h3>New event</h3>
+    <div class="fb-field"><label class="fb-label">Title</label><input class="fb-input" id="evTitle" placeholder="Weekly team sync"></div>
+    <div class="fb-field"><label class="fb-label">Description</label><input class="fb-input" id="evDesc" placeholder="Optional"></div>
+    <div style="display:flex;gap:10px;">
+      <div class="fb-field" style="flex:1;"><label class="fb-label">Date</label><input type="date" class="fb-input" id="evDate"></div>
+      <div class="fb-field" style="flex:1;"><label class="fb-label">Time</label><input type="time" class="fb-input" id="evTime"></div>
+    </div>
+    <div class="fb-field">
+      <label class="fb-label">Color</label>
+      <div style="display:flex;gap:8px;">
+        {% for c, label in color_choices %}
+          <div onclick="pickColor('{{ c }}')" style="width:26px;height:26px;border-radius:50%;background:{{ c }};cursor:pointer;border:2px solid var(--border);" data-color="{{ c }}" class="colorpick"></div>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="evColor" value="#4ade80">
+    </div>
+    <div class="fb-field">
+      <label class="fb-label">Attendees</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        {% for m in members %}
+          <label class="fb-chip" style="cursor:pointer;"><input type="checkbox" value="{{ m.id }}" class="ev-attendee" style="margin-inline-end:4px;">{{ m.get_full_name|default:m.username }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <button class="fb-btn" onclick="saveEvent()" style="width:100%;justify-content:center;">Save event</button>
+  </div>
+</div>
+
+<script>
+const CSRF = window.CSRF_TOKEN;
+function openEventModal(date) {
+  document.getElementById('evTitle').value = '';
+  document.getElementById('evDesc').value = '';
+  document.getElementById('evDate').value = date || '';
+  document.getElementById('evTime').value = '';
+  document.querySelectorAll('.ev-attendee').forEach(c => c.checked = false);
+  document.getElementById('eventModalOverlay').classList.add('open');
+  event.stopPropagation();
+}
+function closeEventModal() { document.getElementById('eventModalOverlay').classList.remove('open'); }
+document.getElementById('eventModalOverlay').addEventListener('click', (e) => { if (e.target.id === 'eventModalOverlay') closeEventModal(); });
+function pickColor(c) { document.getElementById('evColor').value = c; }
+function saveEvent() {
+  const attendees = Array.from(document.querySelectorAll('.ev-attendee:checked')).map(c => parseInt(c.value));
+  const payload = {
+    title: document.getElementById('evTitle').value || 'Untitled event',
+    description: document.getElementById('evDesc').value,
+    date: document.getElementById('evDate').value,
+    start_time: document.getElementById('evTime').value,
+    color: document.getElementById('evColor').value,
+    attendees: attendees,
+  };
+  if (!payload.date) { alert('Please pick a date'); return; }
+  fetch("{% url 'events:create_event' %}", {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify(payload)})
+    .then(() => location.reload());
+}
+</script>
+{% endblock %}

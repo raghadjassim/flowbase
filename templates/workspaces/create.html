@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}New workspace{% endblock %}
+{% block content %}
+<div class="fb-card" style="max-width:480px;margin:40px auto;">
+  <h2 style="margin-top:0;">Create a new workspace</h2>
+  <p style="color:var(--text-dim);font-size:13.5px;">Spin up a separate workspace for another team or department. Every user gets their own workspaces and can switch between them easily.</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="fb-field">
+      <label class="fb-label">Workspace name</label>
+      <input type="text" name="name" class="fb-input" placeholder="e.g. Marketing Team" required>
+    </div>
+    <button type="submit" class="fb-btn">Create</button>
+  </form>
+</div>
+{% endblock %}

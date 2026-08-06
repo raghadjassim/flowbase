@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<h2 style="margin-top:0;">Notifications</h2>
+<p style="color:var(--text-dim);margin-bottom:22px;">Every alert related to your tasks, meetings, and workspaces.</p>
+
+<div class="fb-card" style="padding:0;overflow:hidden;">
+  {% for n in notes %}
+    <a href="{{ n.link|default:'#' }}" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border-soft); {% if not n.read %}background:var(--accent-soft);{% endif %}">
+      <div class="fb-stat-icon" style="width:34px;height:34px;font-size:15px;
+        {% if n.type == 'assignment' %}background:var(--accent-soft);color:var(--accent);
+        {% elif n.type == 'event' %}background:rgba(98,163,255,.14);color:var(--info);
+        {% elif n.type == 'reminder' %}background:rgba(245,165,69,.14);color:var(--warn);
+        {% else %}background:rgba(167,139,250,.14);color:var(--purple);{% endif %}">
+        {% if n.type == 'assignment' %}✓{% elif n.type == 'event' %}📅{% elif n.type == 'reminder' %}⏰{% else %}◈{% endif %}
+      </div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13.5px;">{{ n.title }}</div>
+        {% if n.body %}<div style="color:var(--text-faint);font-size:12px;margin-top:2px;">{{ n.body }}</div>{% endif %}
+      </div>
+      <span style="color:var(--text-faint);font-size:11px;">{{ n.created_at|date:"d/m H:i" }}</span>
+    </a>
+  {% empty %}
+    <div class="fb-empty"><div class="big">🔔</div>No notifications yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

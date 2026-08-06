@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/board.css' %}">{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="project-icon" style="background:{{ project.color }};margin:0;">{{ project.icon_letter }}</div>
+    <div>
+      <h2 style="margin:0;">{{ project.name }}</h2>
+      <p style="color:var(--text-dim);margin:2px 0 0;font-size:13px;">{{ project.tasks.count }} tasks · {{ project.progress_percent }}% complete</p>
+    </div>
+  </div>
+  <a href="{% url 'boards:project_list' %}" class="fb-btn secondary">← All projects</a>
+</div>
+
+<div class="kanban">
+  {% for col in columns %}
+    <div class="kanban-col">
+      <div class="kanban-col-head">
+        <span class="kanban-dot" style="background:{{ col.color|default:'#9aa5b1' }};"></span>
+        <span class="kanban-col-title">{{ col.name }}</span>
+        <span class="kanban-count">{{ col.tasks.count }}</span>
+      </div>
+      <div class="kanban-list" data-column-id="{{ col.id }}" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        {% for t in col.tasks.all %}
+          <div class="task-card" draggable="true" data-task-id="{{ t.id }}" ondragstart="onDragStart(event)" ondragend="onDragEnd(event)" onclick="openTask({{ t.id }}, '{{ t.title|escapejs }}', '{{ t.description|escapejs }}', '{{ t.priority }}', '{{ t.due_date|date:"Y-m-d" }}', [{% for a in t.assignees.all %}{{ a.id }}{% if not forloop.last %},{% endif %}{% endfor %}])">
+            <div class="task-title">{{ t.title }}</div>
+            <div class="task-meta">
+              <span class="task-priority {{ t.priority }}">{{ t.get_priority_display }}</span>
+              {% if t.due_date %}<span class="task-due">📅 {{ t.due_date|date:"d/m" }}</span>{% endif %}
+            </div>
+            <div class="task-assignees">
+              {% for a in t.assignees.all %}
+                <div class="mini-avatar" style="background:{{ a.avatar_color }};" title="{{ a.get_full_name|default:a.username }}">{{ a.initial }}</div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="add-task-btn" onclick="openCreateTask({{ col.id }})">＋ Add task</div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Task modal -->
+<div class="fb-modal-overlay" id="taskModalOverlay">
+  <div class="fb-modal">
+    <span class="fb-modal-close" onclick="closeModal()">×</span>
+    <h3 id="taskModalTitle">New task</h3>
+    <input type="hidden" id="taskId">
+    <input type="hidden" id="taskColumnId">
+    <div class="fb-field"><label class="fb-label">Title</label><input class="fb-input" id="taskTitle" placeholder="Task title"></div>
+    <div class="fb-field"><label class="fb-label">Description</label><textarea class="fb-input" id="taskDesc" rows="3" placeholder="Additional details..."></textarea></div>
+    <div class="fb-field"><label class="fb-label">Priority</label>
+      <select class="fb-input" id="taskPriority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div class="fb-field"><label class="fb-label">Due date</label><input type="date" class="fb-input" id="taskDue"></div>
+    <div class="fb-field">
+      <label class="fb-label">Assign to</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        {% for m in members %}
+          <label class="fb-chip" style="cursor:pointer;">
+            <input type="checkbox" value="{{ m.id }}" class="assignee-check" style="margin-inline-end:4px;">{{ m.get_full_name|default:m.username }}
+          </label>
+        {% endfor %}
+      </div>
+      {% if teams %}
+      <div style="margin-top:8px;font-size:12px;color:var(--text-faint);">Quick-assign a team:
+        {% for team in teams %}
+          <span class="fb-chip" style="cursor:pointer;color:{{ team.color }};" onclick='assignTeam({{ team.id|default:"0" }}, {% for m in team.members.all %}{{ m.id }}{% if not forloop.last %},{% endif %}{% endfor %})'>{{ team.name }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="fb-btn" onclick="saveTask()" style="flex:1;">Save</button>
+      <button class="fb-btn danger" id="deleteTaskBtn" style="display:none;" onclick="deleteTask()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CSRF = window.CSRF_TOKEN;
+let draggedTaskId = null;
+
+function onDragStart(e) {
+  draggedTaskId = e.currentTarget.dataset.taskId;
+  e.currentTarget.classList.add('dragging');
+}
+function onDragEnd(e) { e.currentTarget.classList.remove('dragging'); }
+function onDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  const list = e.currentTarget;
+  list.classList.remove('drag-over');
+  const columnId = list.dataset.columnId;
+  const card = document.querySelector(`.task-card[data-task-id="${draggedTaskId}"]`);
+  if (card) list.appendChild(card);
+  fetch(`/boards/tasks/${draggedTaskId}/move/`, {
+    method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken': CSRF},
+    body: JSON.stringify({column_id: columnId, order: 0})
+  }).then(() => location.reload());
+}
+
+function openCreateTask(columnId) {
+  document.getElementById('taskModalTitle').innerText = 'New task';
+  document.getElementById('taskId').value = '';
+  document.getElementById('taskColumnId').value = columnId;
+  document.getElementById('taskTitle').value = '';
+  document.getElementById('taskDesc').value = '';
+  document.getElementById('taskPriority').value = 'medium';
+  document.getElementById('taskDue').value = '';
+  document.querySelectorAll('.assignee-check').forEach(c => c.checked = false);
+  document.getElementById('deleteTaskBtn').style.display = 'none';
+  document.getElementById('taskModalOverlay').classList.add('open');
+}
+
+function openTask(id, title, desc, priority, due, assignees) {
+  document.getElementById('taskModalTitle').innerText = 'Edit task';
+  document.getElementById('taskId').value = id;
+  document.getElementById('taskTitle').value = title;
+  document.getElementById('taskDesc').value = desc;
+  document.getElementById('taskPriority').value = priority;
+  document.getElementById('taskDue').value = due && due !== 'None' ? due : '';
+  document.querySelectorAll('.assignee-check').forEach(c => c.checked = assignees.includes(parseInt(c.value)));
+  document.getElementById('deleteTaskBtn').style.display = 'inline-flex';
+  document.getElementById('taskModalOverlay').classList.add('open');
+  event.stopPropagation();
+}
+
+function assignTeam(teamId, ...memberIds) {
+  document.querySelectorAll('.assignee-check').forEach(c => { if (memberIds.includes(parseInt(c.value))) c.checked = true; });
+}
+
+function closeModal() { document.getElementById('taskModalOverlay').classList.remove('open'); }
+document.getElementById('taskModalOverlay').addEventListener('click', (e) => { if (e.target.id === 'taskModalOverlay') closeModal(); });
+
+function saveTask() {
+  const id = document.getElementById('taskId').value;
+  const assignees = Array.from(document.querySelectorAll('.assignee-check:checked')).map(c => parseInt(c.value));
+  const payload = {
+    title: document.getElementById('taskTitle').value || 'مهمة بدون عنوان',
+    description: document.getElementById('taskDesc').value,
+    priority: document.getElementById('taskPriority').value,
+    due_date: document.getElementById('taskDue').value,
+    assignees: assignees,
+  };
+  if (id) {
+    fetch(`/boards/tasks/${id}/update/`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify(payload)})
+      .then(() => location.reload());
+  } else {
+    payload.column_id = document.getElementById('taskColumnId').value;
+    fetch(`{% url 'boards:create_task' project.id %}`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify(payload)})
+      .then(() => location.reload());
+  }
+}
+
+function deleteTask() {
+  const id = document.getElementById('taskId').value;
+  if (!confirm('Delete this task?')) return;
+  fetch(`/boards/tasks/${id}/delete/`, {method:'POST', headers:{'X-CSRFToken': CSRF}}).then(() => location.reload());
+}
+</script>
+{% endblock %}

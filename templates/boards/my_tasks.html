@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}My tasks{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/board.css' %}">{% endblock %}
+{% block content %}
+<h2 style="margin-top:0;">My tasks</h2>
+<p style="color:var(--text-dim);margin-bottom:22px;">All tasks assigned to you across projects in "{{ current_workspace.name }}".</p>
+
+<div class="fb-card" style="padding:0;overflow:hidden;">
+  {% for t in tasks %}
+    <a href="{% url 'boards:project_detail' t.project.id %}" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border-soft);">
+      <span class="task-priority {{ t.priority }}">{{ t.get_priority_display }}</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:14px;">{{ t.title }}</div>
+        <div style="color:var(--text-faint);font-size:12px;">{{ t.project.name }} · {{ t.column.name }}</div>
+      </div>
+      {% if t.due_date %}<span class="task-due">📅 {{ t.due_date|date:"d/m/Y" }}</span>{% endif %}
+    </a>
+  {% empty %}
+    <div class="fb-empty"><div class="big">🎉</div>No tasks assigned to you yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

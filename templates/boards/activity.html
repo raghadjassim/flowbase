@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Activity{% endblock %}
+{% block content %}
+<h2 style="margin-top:0;">Recent activity</h2>
+<p style="color:var(--text-dim);margin-bottom:22px;">Latest tasks created in "{{ current_workspace.name }}".</p>
+<div class="fb-card" style="padding:0;overflow:hidden;">
+  {% for t in tasks %}
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border-soft);">
+      <div class="fb-avatar" style="width:30px;height:30px;font-size:12px;background:{{ t.created_by.avatar_color }}">{{ t.created_by.initial }}</div>
+      <div style="flex:1;font-size:13.5px;">
+        <b>{{ t.created_by.get_full_name|default:t.created_by.username }}</b> created task
+        <a href="{% url 'boards:project_detail' t.project.id %}" style="color:var(--accent);">{{ t.title }}</a>
+        in {{ t.project.name }}
+      </div>
+      <span style="color:var(--text-faint);font-size:11.5px;">{{ t.created_at|date:"d/m H:i" }}</span>
+    </div>
+  {% empty %}
+    <div class="fb-empty">No activity yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Focus wall{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/stickywall.css' %}">{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+  <div>
+    <h2 style="margin:0;">Focus wall <span style="color:var(--accent);">●</span></h2>
+    <p style="color:var(--text-dim);margin:4px 0 0;">Capture sparks, shape ideas, make work visible.</p>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <button class="fb-btn secondary" disabled>All notes ⌄</button>
+    <button class="fb-btn" id="addNoteBtn">＋ Add note</button>
+  </div>
+</div>
+
+<div id="board">
+  {% for n in notes %}
+    <div class="note draggable" style="--rotate-angle: {{ n.rotate_deg }}deg; left:{{ n.pos_x }}px; top:{{ n.pos_y }}px; background-color:{{ n.color }};" data-id="{{ n.id }}">
+      <div class="pin"></div>
+      <div class="delete-icon">&times;</div>
+      <div class="text"><textarea class="cnt" placeholder="Enter note description here">{{ n.text }}</textarea></div>
+      <div class="color-picker">
+        <div class="color-circle color1" data-color="#FFA500"></div>
+        <div class="color-circle color2" data-color="#FFC0CB"></div>
+        <div class="color-circle color3" data-color="#ADFF2F"></div>
+        <div class="color-circle color4" data-color="#98FB98"></div>
+        <div class="color-circle color5" data-color="#FF69B4"></div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+<p style="color:var(--text-faint);font-size:12px;margin-top:10px;">Drag notes around · Click to write · Saved automatically</p>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = window.CSRF_TOKEN;
+const CREATE_URL = "{% url 'stickywall:create_note' %}";
+
+function updateNote(id, data) {
+  fetch(`/focus-wall/api/${id}/update/`, {
+    method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+    body: JSON.stringify(data)
+  });
+}
+
+function makeDraggable() {
+  $(".draggable").draggable({
+    containment: "#board",
+    stack: ".note",
+    stop: function(event, ui) {
+      const id = $(this).data('id');
+      updateNote(id, {x: Math.round(ui.position.left), y: Math.round(ui.position.top)});
+    }
+  });
+}
+
+function addFunctionality($sticky) {
+  const id = $sticky.data('id');
+
+  $sticky.find('.color-circle').click(function() {
+    const newColor = $(this).data('color');
+    $sticky.css('background-color', newColor);
+    updateNote(id, {color: newColor});
+  });
+
+  $sticky.find('.delete-icon').click(function() {
+    fetch(`/focus-wall/api/${id}/delete/`, {method: 'POST', headers: {'X-CSRFToken': CSRF}});
+    $sticky.remove();
+  });
+
+  let saveTimer;
+  $sticky.find('textarea').focus(function() {
+    $sticky.addClass('editing');
+  }).on('input', function() {
+    clearTimeout(saveTimer);
+    const val = $(this).val();
+    saveTimer = setTimeout(() => updateNote(id, {text: val}), 500);
+  }).blur(function() {
+    $sticky.removeClass('editing');
+    updateNote(id, {text: $(this).val()});
+  });
+}
+
+$(function() {
+  makeDraggable();
+  $(".note").each(function() { addFunctionality($(this)); });
+
+  $("#addNoteBtn").click(function() {
+    fetch(CREATE_URL, {method: 'POST', headers: {'X-CSRFToken': CSRF}})
+      .then(r => r.json())
+      .then(data => {
+        const $sticky = $(
+          `<div class='note draggable' data-id='${data.id}' style='--rotate-angle: ${data.rotate}deg; left:${data.x}px; top:${data.y}px; background-color:${data.color};'>` +
+          "<div class='pin'></div>" +
+          "<div class='delete-icon'>&times;</div>" +
+          "<div class='text'><textarea class='cnt' placeholder='Enter note description here'></textarea></div>" +
+          "<div class='color-picker'>" +
+          "<div class='color-circle color1' data-color='#FFA500'></div>" +
+          "<div class='color-circle color2' data-color='#FFC0CB'></div>" +
+          "<div class='color-circle color3' data-color='#ADFF2F'></div>" +
+          "<div class='color-circle color4' data-color='#98FB98'></div>" +
+          "<div class='color-circle color5' data-color='#FF69B4'></div>" +
+          "</div></div>"
+        );
+        $("#board").append($sticky);
+        makeDraggable();
+        addFunctionality($sticky);
+        $sticky.find('textarea').focus();
+      });
+  });
+});
+</script>
+{% endblock %}

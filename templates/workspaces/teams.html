@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Teams{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+  <div>
+    <h2 style="margin:0;">Teams</h2>
+    <p style="color:var(--text-dim);margin:4px 0 0;">Organize members of "{{ current_workspace.name }}" into teams for easy collaboration and task assignment.</p>
+  </div>
+  <form method="post" style="display:flex;gap:8px;">
+    {% csrf_token %}
+    <input type="text" name="name" class="fb-input" placeholder="New team name" required style="width:200px;">
+    <button type="submit" class="fb-btn">＋ Team</button>
+  </form>
+</div>
+
+<div class="project-grid">
+  {% for team in teams %}
+  <div class="fb-card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <span style="width:12px;height:12px;border-radius:50%;background:{{ team.color }};display:inline-block;"></span>
+      <h3 style="margin:0;flex:1;">{{ team.name }}</h3>
+      <span class="fb-btn danger small" onclick="deleteTeam({{ team.id }})">Delete</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      {% for u in members %}
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0;cursor:pointer;">
+          <input type="checkbox" {% if u in team.members.all %}checked{% endif %} onchange="toggleMember({{ team.id }}, {{ u.id }})">
+          <div class="fb-avatar" style="width:22px;height:22px;font-size:10px;background:{{ u.avatar_color }}">{{ u.initial }}</div>
+          {{ u.get_full_name|default:u.username }}
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="fb-empty"><div class="big">◈</div>No teams yet. Create your first team above.</div>
+  {% endfor %}
+</div>
+
+<script>
+function toggleMember(teamId, userId) {
+  fetch(`/teams/${teamId}/toggle/${userId}/`, {method:'POST', headers:{'X-CSRFToken': window.CSRF_TOKEN}});
+}
+function deleteTeam(teamId) {
+  if (!confirm('Delete this team?')) return;
+  fetch(`/teams/${teamId}/delete/`, {method:'POST', headers:{'X-CSRFToken': window.CSRF_TOKEN}}).then(()=>location.reload());
+}
+</script>
+{% endblock %}

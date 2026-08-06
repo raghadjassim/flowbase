@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Projects{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/board.css' %}">{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+  <div>
+    <h2 style="margin:0;">Projects</h2>
+    <p style="color:var(--text-dim);margin:4px 0 0;">Kanban boards for every project in "{{ current_workspace.name }}".</p>
+  </div>
+  <form method="post" action="{% url 'boards:create_project' %}" style="display:flex;gap:8px;">
+    {% csrf_token %}
+    <input type="text" name="name" class="fb-input" placeholder="New project name" required style="width:220px;">
+    <button type="submit" class="fb-btn">＋ Project</button>
+  </form>
+</div>
+
+<div class="project-grid">
+  {% for p in projects %}
+    <a href="{% url 'boards:project_detail' p.id %}" class="project-card">
+      <div class="project-icon" style="background:{{ p.color }};">{{ p.icon_letter }}</div>
+      <h3 style="margin:0 0 4px;">{{ p.name }}</h3>
+      <p style="color:var(--text-faint);font-size:12.5px;margin:0 0 12px;">{{ p.tasks.count }} tasks</p>
+      <div class="fb-progress"><div style="width:{{ p.progress_percent }}%;background:{{ p.color }};"></div></div>
+    </a>
+  {% empty %}
+    <div class="fb-empty"><div class="big">◱</div>No projects yet. Create your first one above.</div>
+  {% endfor %}
+</div>
+{% endblock %}

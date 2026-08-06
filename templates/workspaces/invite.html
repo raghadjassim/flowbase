@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Invite teammates{% endblock %}
+{% block content %}
+<h2 style="margin-top:0;">Invite teammates to "{{ current_workspace.name }}"</h2>
+<p style="color:var(--text-dim);margin-bottom:22px;">Enter an email — if they already have an account they'll be added instantly, otherwise a pending invite is saved.</p>
+
+<div class="fb-card" style="max-width:480px;margin-bottom:22px;">
+  <form method="post" style="display:flex;gap:10px;">
+    {% csrf_token %}
+    <input type="email" name="email" class="fb-input" placeholder="colleague@company.com" required>
+    <button type="submit" class="fb-btn">Invite</button>
+  </form>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:800px;">
+  <div class="fb-card">
+    <h3 style="margin-top:0;">Current members ({{ members.count }})</h3>
+    {% for m in members %}
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-soft);">
+        <div class="fb-avatar" style="width:30px;height:30px;font-size:12px;background:{{ m.user.avatar_color }}">{{ m.user.initial }}</div>
+        <div style="font-size:13.5px;font-weight:600;">{{ m.user.get_full_name|default:m.user.username }}</div>
+        <span class="fb-chip" style="margin-inline-start:auto;">{{ m.get_role_display }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="fb-card">
+    <h3 style="margin-top:0;">Pending invites ({{ pending.count }})</h3>
+    {% for i in pending %}
+      <div style="padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:13.5px;">{{ i.email }}</div>
+    {% empty %}
+      <div class="fb-empty" style="padding:20px;">No pending invites.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

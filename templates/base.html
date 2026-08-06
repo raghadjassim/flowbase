@@ -1,0 +1,165 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="{{ request.user.theme|default:'dark' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Flowbase{% endblock %} · Flowbase</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Gloria+Hallelujah&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/theme.css' %}">
+  {% block extra_css %}{% endblock %}
+  <script>
+    window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js"></script>
+</head>
+<body>
+<div class="fb-messages" id="fbMessages">
+  {% for message in messages %}
+    <div class="fb-msg {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+  {% endfor %}
+</div>
+
+<div class="fb-app">
+  <aside class="fb-sidebar" id="fbSidebar">
+    <div class="fb-brand">
+      <div class="fb-brand-icon">f</div>
+      <div class="fb-brand-name">flowbase</div>
+    </div>
+
+    <nav class="fb-nav">
+      <a href="{% url 'workspaces:overview' %}" class="fb-nav-link {% if request.resolver_match.url_name == 'overview' %}active{% endif %}">
+        <span class="fb-nav-icon">⌂</span> Overview
+      </a>
+      <a href="{% url 'boards:my_tasks' %}" class="fb-nav-link {% if request.resolver_match.url_name == 'my_tasks' %}active{% endif %}">
+        <span class="fb-nav-icon">▦</span> My tasks
+      </a>
+      <a href="{% url 'boards:project_list' %}" class="fb-nav-link {% if request.resolver_match.url_name == 'project_list' or request.resolver_match.url_name == 'project_detail' %}active{% endif %}">
+        <span class="fb-nav-icon">◱</span> Projects
+      </a>
+      <a href="{% url 'stickywall:focus_wall' %}" class="fb-nav-link {% if request.resolver_match.url_name == 'focus_wall' %}active{% endif %}">
+        <span class="fb-nav-icon">◎</span> Focus wall
+      </a>
+      <a href="{% url 'events:calendar' %}" class="fb-nav-link {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
+        <span class="fb-nav-icon">▤</span> Calendar
+      </a>
+      <a href="{% url 'workspaces:teams' %}" class="fb-nav-link {% if request.resolver_match.url_name == 'teams' %}active{% endif %}">
+        <span class="fb-nav-icon">◈</span> Teams
+      </a>
+      <a href="{% url 'boards:activity' %}" class="fb-nav-link {% if request.resolver_match.url_name == 'activity' %}active{% endif %}">
+        <span class="fb-nav-icon">◔</span> Activity
+      </a>
+    </nav>
+
+    <div class="fb-section-label">Workspaces</div>
+    <div class="fb-workspace-list">
+      {% for m in my_workspaces %}
+        <a href="{% url 'workspaces:switch' m.workspace.id %}" class="fb-workspace-item {% if current_workspace.id == m.workspace.id %}active{% endif %}">
+          <span class="fb-ws-icon" style="background:{{ m.workspace.icon_color }}">{{ m.workspace.icon_letter }}</span>
+          {{ m.workspace.name }}
+        </a>
+      {% endfor %}
+    </div>
+    <a href="{% url 'workspaces:create' %}" class="fb-invite-btn" style="margin-bottom:10px;">＋ New workspace</a>
+    <a href="{% url 'workspaces:invite' %}" class="fb-invite-btn">＋ Invite teammates</a>
+
+    <div class="fb-sidebar-footer">
+      <div class="fb-avatar" style="background:{{ request.user.avatar_color }}">{{ request.user.initial }}</div>
+      <div class="fb-user-meta">
+        <div class="fb-user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+        <div class="fb-user-role">{{ request.user.job_title|default:"Team member" }}</div>
+      </div>
+      <a href="{% url 'accounts:settings' %}" class="fb-logout-icon" title="Settings">⚙</a>
+      <a href="{% url 'accounts:logout' %}" class="fb-logout-icon" title="Log out">⏻</a>
+    </div>
+  </aside>
+
+  <main class="fb-main">
+    <div class="fb-topbar">
+      <div class="fb-crumbs">Workspaces / <b>{{ current_workspace.name }}</b></div>
+      <div class="fb-search">🔍 Search... <span style="margin-inline-start:auto;opacity:.6;">⌘K</span></div>
+
+      <div class="dropdown">
+        <div class="fb-icon-btn" id="notifBtn">🔔{% if unread_notifications_count %}<span class="dot"></span>{% endif %}</div>
+        <div class="dropdown-panel" id="notifPanel">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;">
+            <b style="font-size:13px;">Notifications</b>
+            <a href="{% url 'notifications:list' %}" style="font-size:12px;color:var(--accent);">View all</a>
+          </div>
+          {% for n in recent_notifications %}
+            <div class="dropdown-item">
+              <div class="t">{{ n.title }}</div>
+              <div class="b">{{ n.body }}</div>
+            </div>
+          {% empty %}
+            <div class="dropdown-item"><div class="b">No notifications yet.</div></div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="fb-toggle" id="themeToggle">
+        <button data-theme="dark" type="button">🌙</button>
+        <button data-theme="light" type="button">☀️</button>
+      </div>
+    </div>
+
+    <div class="fb-content">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<div id="reminderToast"></div>
+
+<script>
+  // theme toggle
+  (function() {
+    const root = document.documentElement;
+    const buttons = document.querySelectorAll('#themeToggle button');
+    function sync() {
+      const current = root.getAttribute('data-theme');
+      buttons.forEach(b => b.classList.toggle('active', b.dataset.theme === current));
+    }
+    sync();
+    buttons.forEach(btn => btn.addEventListener('click', () => {
+      const theme = btn.dataset.theme;
+      root.setAttribute('data-theme', theme);
+      sync();
+      fetch("{% url 'accounts:set_theme' %}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN},
+        body: JSON.stringify({theme: theme})
+      });
+    }));
+  })();
+
+  // notifications dropdown
+  (function() {
+    const btn = document.getElementById('notifBtn');
+    const panel = document.getElementById('notifPanel');
+    btn.addEventListener('click', (e) => { e.stopPropagation(); panel.classList.toggle('open'); });
+    document.addEventListener('click', () => panel.classList.remove('open'));
+  })();
+
+  // auto-hide flash messages
+  setTimeout(() => { const el = document.getElementById('fbMessages'); if (el) el.style.display = 'none'; }, 4000);
+
+  // simple reminder poll (today's events for current user)
+  {% if current_workspace %}
+  function checkReminders() {
+    fetch("{% url 'events:api_reminders' %}").then(r => r.json()).then(data => {
+      if (data.items && data.items.length && !sessionStorage.getItem('reminders_shown')) {
+        sessionStorage.setItem('reminders_shown', '1');
+      }
+    });
+  }
+  checkReminders();
+  setInterval(checkReminders, 5 * 60 * 1000);
+  {% endif %}
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

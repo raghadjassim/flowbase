@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:flex-start;justify-content:space-between;">
+  <div>
+    <div style="color:var(--text-faint);font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">Dashboard</div>
+    <h1 style="font-size:30px;margin:6px 0 4px;">Good morning, {{ request.user.first_name|default:request.user.username }} ✨</h1>
+    <p style="color:var(--text-dim);">Here's what needs your attention today in {{ current_workspace.name }}.</p>
+  </div>
+  <button class="fb-btn" onclick="openQuickTask()">＋ New task</button>
+</div>
+
+<div class="fb-stat-grid">
+  <div class="fb-card fb-stat">
+    <div class="fb-stat-icon" style="background:var(--accent-soft);color:var(--accent);">✓</div>
+    <div><div class="fb-stat-label">My open tasks</div><div class="fb-stat-value">{{ my_open_tasks_count }}</div><div class="fb-stat-sub">{{ my_open_due_today }} due today</div></div>
+  </div>
+  <div class="fb-card fb-stat">
+    <div class="fb-stat-icon" style="background:rgba(245,165,69,.14);color:var(--warn);">⟳</div>
+    <div><div class="fb-stat-label">In progress</div><div class="fb-stat-value">{{ in_progress_count }}</div><div class="fb-stat-sub">Across {{ projects_count }} projects</div></div>
+  </div>
+  <div class="fb-card fb-stat">
+    <div class="fb-stat-icon" style="background:rgba(98,163,255,.14);color:var(--info);">↗</div>
+    <div><div class="fb-stat-label">Completed this week</div><div class="fb-stat-value">{{ completed_week_count }}</div><div class="fb-stat-sub">Keep up the good work</div></div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:start;">
+  <div class="fb-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div>
+        <h3 style="margin:0;">My priority tasks</h3>
+        <p style="color:var(--text-dim);font-size:12.5px;margin:2px 0 0;">Drag tasks between stages inside any project.</p>
+      </div>
+      <a href="{% url 'stickywall:focus_wall' %}" style="color:var(--accent);font-size:13px;font-weight:700;">Focus wall →</a>
+    </div>
+    {% for t in priority_tasks %}
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-soft);">
+        <span class="task-priority {{ t.priority }}">{{ t.get_priority_display }}</span>
+        <a href="{% url 'boards:project_detail' t.project.id %}" style="font-weight:600;font-size:13.5px;">{{ t.title }}</a>
+        <span style="margin-inline-start:auto;color:var(--text-faint);font-size:12px;">{{ t.column.name }}</span>
+      </div>
+    {% empty %}
+      <div class="fb-empty"><div class="big">🎉</div>No tasks assigned to you yet.</div>
+    {% endfor %}
+  </div>
+
+  <div class="fb-card">
+    <h3 style="margin-top:0;">Project pulse</h3>
+    <p style="color:var(--text-dim);font-size:12.5px;margin-top:-8px;">A quick look at your momentum.</p>
+    {% for p in projects %}
+      <div style="margin:14px 0;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px;">
+          <a href="{% url 'boards:project_detail' p.id %}" style="display:flex;align-items:center;gap:8px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:{{ p.color }};display:inline-block;"></span>{{ p.name }}
+          </a>
+          <span style="color:var(--text-faint);">{{ p.progress_percent }}%</span>
+        </div>
+        <div class="fb-progress"><div style="width:{{ p.progress_percent }}%;background:{{ p.color }};"></div></div>
+      </div>
+    {% empty %}
+      <div class="fb-empty">No projects yet.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Quick add task modal -->
+<div class="fb-modal-overlay" id="quickTaskOverlay">
+  <div class="fb-modal">
+    <span class="fb-modal-close" onclick="closeQuickTask()">×</span>
+    <h3>New task</h3>
+    <p style="color:var(--text-dim);font-size:12.5px;margin-top:-8px;">Added to <b>{{ default_project.name }}</b> · {{ default_column.name }}</p>
+    <div class="fb-field"><label class="fb-label">Title</label><input class="fb-input" id="qtTitle" placeholder="What needs to get done?"></div>
+    <div class="fb-field"><label class="fb-label">Priority</label>
+      <select class="fb-input" id="qtPriority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div class="fb-field"><label class="fb-label">Due date</label><input type="date" class="fb-input" id="qtDue"></div>
+    <div class="fb-field">
+      <label class="fb-label">Assign to</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        {% for m in members %}
+          <label class="fb-chip" style="cursor:pointer;"><input type="checkbox" value="{{ m.id }}" class="qt-assignee" style="margin-inline-end:4px;">{{ m.get_full_name|default:m.username }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <button class="fb-btn" onclick="saveQuickTask()" style="width:100%;justify-content:center;">Add task</button>
+  </div>
+</div>
+
+<script>
+const CSRF = window.CSRF_TOKEN;
+function openQuickTask() {
+  document.getElementById('qtTitle').value = '';
+  document.getElementById('qtPriority').value = 'medium';
+  document.getElementById('qtDue').value = '';
+  document.querySelectorAll('.qt-assignee').forEach(c => c.checked = false);
+  document.getElementById('quickTaskOverlay').classList.add('open');
+}
+function closeQuickTask() { document.getElementById('quickTaskOverlay').classList.remove('open'); }
+document.getElementById('quickTaskOverlay').addEventListener('click', (e) => { if (e.target.id === 'quickTaskOverlay') closeQuickTask(); });
+
+function saveQuickTask() {
+  const title = document.getElementById('qtTitle').value.trim();
+  if (!title) { alert('Please enter a title'); return; }
+  const assignees = Array.from(document.querySelectorAll('.qt-assignee:checked')).map(c => parseInt(c.value));
+  fetch("{% url 'workspaces:quick_add_task' %}", {
+    method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+    body: JSON.stringify({
+      title: title,
+      priority: document.getElementById('qtPriority').value,
+      due_date: document.getElementById('qtDue').value,
+      assignees: assignees,
+    })
+  }).then(r => r.json()).then(data => {
+    if (data.ok) { window.location.href = `/boards/${data.project_id}/`; }
+  });
+}
+</script>
+{% endblock %}
