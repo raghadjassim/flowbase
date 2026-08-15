@@ -57,6 +57,17 @@ button { font-family: inherit; }
 ::selection { background: var(--accent-soft); }
 
 /* ---- layout ---- */
+html, body { overflow-x: hidden; }
+
+/* Auto-scale wrapper: the whole app is laid out at a fixed 1280px design
+   width, then scaled down uniformly on narrow screens via JS so mobile
+   shows an exact miniature of the desktop layout — no reflow, no stacking,
+   no manual zoom needed. */
+#fbScaleRoot {
+  width: 1280px;
+  transform-origin: top left;
+}
+
 .fb-app { display: flex; min-height: 100vh; }
 
 .fb-sidebar {
@@ -233,8 +244,64 @@ button { font-family: inherit; }
 .dropdown-item .t { font-size: 13.5px; font-weight: 700; }
 .dropdown-item .b { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
 
-@media (max-width: 900px) {
-  .fb-sidebar { position: fixed; z-index: 200; transform: translateX(110%); transition: transform .2s; }
-  .fb-sidebar.open { transform: translateX(0); }
-  .fb-search { display: none; }
+.dashboard-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; align-items: start; }
+.split-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+
+/* ===================== Mobile responsive layout ===================== */
+.fb-hamburger {
+  display: none;
+  width: 38px; height: 38px; border-radius: 10px; background: var(--panel-2);
+  border: 1px solid var(--border); align-items: center; justify-content: center;
+  color: var(--text); cursor: pointer; flex-shrink: 0; font-size: 18px;
 }
+
+.fb-sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 190;
+}
+.fb-sidebar-overlay.open { display: block; }
+
+@media (max-width: 900px) {
+  .fb-hamburger { display: flex; }
+
+  .fb-sidebar {
+    position: fixed; inset-inline-start: 0; top: 0; height: 100vh;
+    z-index: 200; transform: translateX(-105%); transition: transform .22s ease;
+    box-shadow: var(--shadow); width: 260px;
+  }
+  html[dir="rtl"] .fb-sidebar { transform: translateX(105%); }
+  .fb-sidebar.open { transform: translateX(0); }
+
+  .fb-topbar { padding: 12px 14px; gap: 10px; }
+  .fb-search { display: none; }
+  .fb-crumbs {
+    font-size: 12.5px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 38vw;
+  }
+  .fb-content { padding: 16px; }
+
+  .fb-stat-grid { grid-template-columns: 1fr; gap: 12px; margin: 16px 0; }
+  .dashboard-grid, .split-grid { grid-template-columns: 1fr !important; gap: 14px; }
+
+  .fb-modal { width: 92vw; max-width: 92vw; padding: 20px; }
+  .dropdown-panel { width: 85vw; max-width: 340px; inset-inline-end: 0; inset-inline-start: auto; }
+
+  .kanban { gap: 12px; }
+  .kanban-col { width: 84vw; flex-shrink: 0; }
+
+  #board { min-height: 55vh; }
+  .note { width: 78vw; }
+
+  .fb-btn, .fb-btn.secondary, .fb-btn.ghost { font-size: 13.5px; padding: 9px 14px; }
+
+  h1 { font-size: 24px !important; }
+  h2 { font-size: 20px !important; }
+}
+
+@media (max-width: 480px) {
+  .fb-crumbs { max-width: 30vw; }
+  .kanban-col { width: 88vw; }
+  .note { width: 84vw; }
+  .fb-content { padding: 12px; }
+}
+

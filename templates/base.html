@@ -24,6 +24,7 @@
 </div>
 
 <div class="fb-app">
+  <div class="fb-sidebar-overlay" id="fbSidebarOverlay"></div>
   <aside class="fb-sidebar" id="fbSidebar">
     <div class="fb-brand">
       <div class="fb-brand-icon">f</div>
@@ -79,6 +80,7 @@
 
   <main class="fb-main">
     <div class="fb-topbar">
+      <div class="fb-hamburger" id="fbHamburger">☰</div>
       <div class="fb-crumbs">Workspaces / <b>{{ current_workspace.name }}</b></div>
       <div class="fb-search">🔍 Search... <span style="margin-inline-start:auto;opacity:.6;">⌘K</span></div>
 
@@ -159,6 +161,18 @@
   checkReminders();
   setInterval(checkReminders, 5 * 60 * 1000);
   {% endif %}
+
+  // mobile sidebar toggle
+  (function() {
+    var hamburger = document.getElementById('fbHamburger');
+    var sidebar = document.getElementById('fbSidebar');
+    var overlay = document.getElementById('fbSidebarOverlay');
+    if (!hamburger) return;
+    function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('open'); }
+    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+    hamburger.addEventListener('click', openSidebar);
+    overlay.addEventListener('click', closeSidebar);
+  })();
 </script>
 {% block extra_js %}{% endblock %}
 </body>

@@ -21,6 +21,14 @@
     .auth-form .sub { color: var(--text-dim); font-size:13.5px; margin-bottom:28px; }
     .error-box { background: rgba(240,106,95,.12); border:1px solid var(--danger); color:var(--danger); padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:16px; }
     .switch-link { text-align:center; margin-top:18px; font-size:13.5px; color: var(--accent); font-weight:700; }
+    @media (max-width: 720px) {
+      .auth-wrap { flex-direction: column; width: 94vw; }
+      .auth-side { padding: 32px 28px 24px; }
+      .auth-side h1 { font-size: 28px; }
+      .auth-side .tagline { margin-top: 0; }
+      .auth-side .foot { display: none; }
+      .auth-form { padding: 28px; }
+    }
   </style>
 </head>
 <body>

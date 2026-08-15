@@ -90,17 +90,38 @@ Visit **http://127.0.0.1:8000** and sign up, or log in with the seeded `test` / 
 
 ## 🌐 Deploying (making it live)
 
-Flowbase ships with `gunicorn` and `whitenoise` in `requirements.txt`, so it's ready for platforms like **Render**, **Railway**, or **Fly.io**:
+Flowbase ships with `gunicorn`, `whitenoise`, and `dj-database-url` in `requirements.txt`, plus a ready-to-use `render.yaml` blueprint, so it deploys to **Render** in a few clicks.
+
+### Option A — Render, one-click blueprint (recommended)
 
 1. Push the repo to GitHub (see below).
-2. Create a new **Web Service** on Render/Railway pointing at your repo.
-3. Set the **Build Command**: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
-4. Set the **Start Command**: `gunicorn flowbase.wsgi`
-5. Add environment variables:
+2. Go to **render.com** → **New** → **Blueprint** → connect your GitHub repo.
+3. Render reads `render.yaml` automatically and provisions:
+   - a **free Postgres database** (`flowbase-db`)
+   - a **free web service** running `gunicorn flowbase.wsgi`, with `SECRET_KEY` auto-generated and `DATABASE_URL` wired to the database automatically
+4. Click **Apply** — first deploy takes a couple of minutes (it runs `collectstatic` + `migrate` automatically via the build command).
+5. Once live, open a shell for the service (Render dashboard → Shell) and run:
+   ```bash
+   python manage.py createsuperuser
+   python manage.py seed_demo   # optional demo data
+   ```
+6. Your app is live at `https://flowbase-xxxx.onrender.com` 🎉
+
+### Option B — Manual setup on Render / Railway / Fly.io
+
+1. Push the repo to GitHub.
+2. Create a new **Web Service** pointing at your repo.
+3. **Build Command**: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
+4. **Start Command**: `gunicorn flowbase.wsgi`
+5. Environment variables:
    - `SECRET_KEY` — a long random string
    - `DEBUG` — `False`
-   - `ALLOWED_HOSTS` — your Render/Railway domain
-6. (Recommended for production) swap SQLite for a managed PostgreSQL add-on and update `DATABASES` in `flowbase/settings.py`.
+   - `ALLOWED_HOSTS` — your service's domain, e.g. `.onrender.com`
+   - `CSRF_TRUSTED_ORIGINS` — `https://your-domain.onrender.com`
+   - `DATABASE_URL` — from a managed Postgres add-on (falls back to SQLite if not set — fine for a demo, but SQLite resets on redeploy, so Postgres is recommended for anything you'll keep live)
+6. After the first deploy, open a shell and run `python manage.py createsuperuser`.
+
+> ⚠️ Without a `DATABASE_URL`, the app uses SQLite. That's fine for local development, but most hosts (Render included) wipe the filesystem on every redeploy, which would erase your data — so for a workspace you plan to keep live, attach a Postgres database.
 
 ---
 
